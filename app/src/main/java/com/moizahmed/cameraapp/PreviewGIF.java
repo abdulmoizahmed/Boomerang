@@ -2,6 +2,8 @@ package com.moizahmed.cameraapp;
 
 
 import android.databinding.DataBindingUtil;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
@@ -10,6 +12,7 @@ import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 
 import com.bumptech.glide.Glide;
@@ -31,11 +34,13 @@ public class PreviewGIF extends AppCompatActivity {
 
     ActivityPreviewGifBinding binding;
     String fileName;
+    VideoView videoView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = DataBindingUtil.setContentView(this, R.layout.activity_preview_gif);
+        videoView = (VideoView) binding.getRoot().findViewById(R.id.videoHolder);
         showGIF();
         initListener();
     }
@@ -52,7 +57,8 @@ public class PreviewGIF extends AppCompatActivity {
                     }
 
                 } else {
-                    binding.gifHolder.setVisibility(View.GONE);
+
+                    videoView.setVisibility(View.GONE);
                     binding.layoutDetail.setVisibility(View.VISIBLE);
                     binding.reset.setVisibility(View.GONE);
                 }
@@ -89,15 +95,14 @@ public class PreviewGIF extends AppCompatActivity {
     }
 
     private void deleteGIFFile() {
-        File folder = new File("/sdcard/LUX/");
-        File oldfile = new File(folder, fileName);
-        oldfile.delete();
+        File file = new File(fileName);
+        file.delete();
     }
 
     private void renameSaveFile() {
         File folder = new File("/sdcard/LUX/");
-        File oldfile = new File(folder, fileName);
-        File newfile = new File(folder, binding.email.getText().toString() + ".gif");
+        File oldfile = new File(fileName);
+        File newfile = new File(folder, binding.email.getText().toString() + ".mp4");
         if (oldfile.renameTo(newfile)) {
             Toast.makeText(PreviewGIF.this, "File Saved Successfully", Toast.LENGTH_SHORT).show();
             finish();
@@ -106,19 +111,20 @@ public class PreviewGIF extends AppCompatActivity {
 
     private void showGIF() {
         fileName = getIntent().getStringExtra("fileName");
-        File folder = new File("/sdcard/LUX/");
-        File output = new File(folder, fileName);
-
-        Glide.with(this)
-                .load(output)
-                .into(binding.gifHolder);
-        Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+        videoView.setVideoURI(Uri.parse(fileName));
+        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mediaPlayer) {
+                mediaPlayer.setLooping(true);
+            }
+        });
+        videoView.start();
     }
 
     @Override
     public void onBackPressed() {
         if (binding.layoutDetail.getVisibility() == View.VISIBLE) {
-            binding.gifHolder.setVisibility(View.VISIBLE);
+           videoView.setVisibility(View.VISIBLE);
             binding.layoutDetail.setVisibility(View.GONE);
             binding.reset.setVisibility(View.VISIBLE);
         } else {

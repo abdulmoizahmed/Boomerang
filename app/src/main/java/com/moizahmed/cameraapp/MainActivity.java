@@ -18,6 +18,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -27,6 +28,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
 import com.otaliastudios.cameraview.*;
 import com.otaliastudios.cameraview.CameraUtils;
 
@@ -42,6 +48,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 
+import static android.content.ContentValues.TAG;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int MY_PERMISSIONS_REQUEST_CAMERA = 3;
@@ -50,27 +58,56 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap bitmap;
     Button capture;
     ArrayList<Bitmap> bitmaps = new ArrayList<>();
-   CameraView camera;
+    CameraView camera;
     TextView count;
     ProgressDialog dialog;
+    FFmpeg ffmpeg;
+    File output;
+    String reversedPath;
+    String finalPath;
+    File logo;
+    Button cameraButton;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
 
         camera = (CameraView) findViewById(R.id.camera);
+        cameraButton  = (Button) findViewById(R.id.startCamera);
         camera.setPlaySounds(false);
+        camera.setSessionType(SessionType.VIDEO);
+        camera.setAudio(Audio.OFF);
+
         count = (TextView) findViewById(R.id.countdown);
         capture = (Button) findViewById(R.id.startCamera);
         dialog = new ProgressDialog(this);
         dialog.setCancelable(false);
         dialog.setTitle("Please wait");
         dialog.setMessage("Creating GIF from images");
-        camera.addCameraListener(new CustomCameraListener());
+        //camera.addCameraListener(new CustomCameraListener());
         requestCamera();
+        createWaterMarkImage();
+        loadFFMpegBinary();
     }
+
+    private void createWaterMarkImage() {
+        try{
+            logo=new File("/sdcard/LUX/lux.png");
+            InputStream inputStream = getResources().openRawResource(R.drawable.lux); // id drawable
+            OutputStream out=new FileOutputStream(logo);
+            byte buf[]=new byte[1024];
+            int len;
+            while((len=inputStream.read(buf))>0)
+                out.write(buf,0,len);
+            out.close();
+            inputStream.close();
+        }
+        catch (IOException e){}
+
+}
 
     private void requestCamera() {
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
@@ -98,17 +135,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onClick(View View) {
-        Intent intent;
         if (View == findViewById(R.id.startCamera)) {
+            cameraButton.setClickable(false);
             startCountDown();
         } else {
             camera.toggleFacing();
         }
     }
 
+    private void startVideo() {
+        camera.addCameraListener(new CameraListener() {
+            @Override
+            public void onVideoTaken(File video) {
+                reversedPath = "/sdcard/LUX/"+System.currentTimeMillis()+".mp4";
+                String command[] = {"-i", video.getAbsolutePath(),"-preset", "ultrafast", "-vf", "reverse", "-af", "areverse", reversedPath};
+                execFFmpegBinary(command);
+            }
+        });
+
+        File folder = new File("/sdcard/LUX/");
+        folder.mkdir();
+        String input = "" + System.currentTimeMillis() + ".mp4";
+        output = new File(folder, input);
+
+        camera.setVideoQuality(VideoQuality.MAX_480P);
+        camera.setVideoMaxDuration(3000);
+        camera.startCapturingVideo(output);
+
+
+    }
+
     private void startCountDown() {
         count.setVisibility(View.VISIBLE);
-        new CountDownTimer(4000, 1000) {
+        new CountDownTimer(3000, 1000) {
             @Override
             public void onTick(long l) {
                 count.setText("" + l / 1000);
@@ -118,34 +177,130 @@ public class MainActivity extends AppCompatActivity {
             public void onFinish() {
 
                 count.setVisibility(View.GONE);
+                startVideo();
                 captureCountDown();
+
             }
         }.start();
     }
 
     private void captureCountDown() {
-
-
-
         count.setText("Creating GIF. Please Wait...");
-            new CountDownTimer(5000, 1000) {
+        new CountDownTimer(3000, 1000) {
 
-                @Override
-                public void onTick(long l) {
+            @Override
+            public void onTick(long l) {
 
-                    camera.capturePicture();
+            }
+
+            @Override
+            public void onFinish() {
+                count.setVisibility(View.VISIBLE);
+                camera.stopCapturingVideo();
                 }
-
-                @Override
-                public void onFinish() {
-                        count.setVisibility(View.VISIBLE);
-                        reverseBitmaps();
-                        new GifOperations().execute("");
-
-                }
-            }.start();
+        }.start();
     }
 
+    private void loadFFMpegBinary() {
+        try {
+            if (ffmpeg == null) {
+                ffmpeg = FFmpeg.getInstance(MainActivity.this);
+            }
+            ffmpeg.loadBinary(new LoadBinaryResponseHandler() {
+                @Override
+                public void onFailure()
+                {
+                    Toast.makeText(MainActivity.this, "failed loaded", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onSuccess()
+                {
+                    Toast.makeText(MainActivity.this, "successfully loaded", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } catch (FFmpegNotSupportedException e) {
+        } catch (Exception e) {
+        }
+    }
+
+    private void execFFmpegBinary(final String[] command)
+    {
+        try {
+            ffmpeg.execute(command, new ExecuteBinaryResponseHandler() {
+                @Override
+                public void onFailure(String s) {
+
+                    Log.v("reverse","failed : "+s);
+                }
+
+                @Override
+                public void onSuccess(String s)
+                {
+                    Log.v("reverse","success : "+s);
+                    finalPath =  "/sdcard/LUX/"+System.currentTimeMillis()+".mp4";
+                    String command[] = {"-i",output.getAbsolutePath(),"-i",reversedPath,"-i",output.getAbsolutePath(),"-i",reversedPath,"-i",logo.getAbsolutePath(),"-preset", "ultrafast","-filter_complex","[0:0] [1:0] [2:0] [3:0] concat=n=4:v=1:a=0,overlay=main_w-overlay_w-5:5",finalPath};
+                    concatVideos(command);
+                }
+
+
+                @Override
+                public void onProgress(String s)
+                {
+                    Log.v("reverse","progress : "+s);
+                }
+
+               });
+        } catch (FFmpegCommandAlreadyRunningException e) {
+            Log.v("reverse","exception : "+e);
+
+        }
+    }
+
+    public String getURLForResource (int resourceId) {
+        File file = new File(Uri.parse("android.resource://"+R.class.getPackage().getName()+"/" +resourceId).toString());
+        return file.getAbsolutePath();
+    }
+
+    private void concatVideos(String[] command) {
+        try {
+            ffmpeg.execute(command,new ExecuteBinaryResponseHandler()
+            {
+                @Override
+                public void onFailure(String s) {
+                    Log.v("reverse","failed : "+s);
+                }
+
+                @Override
+                public void onSuccess(String s)
+                {
+                    deleteVideoFile(reversedPath);
+                    deleteVideoFile(output.getAbsolutePath());
+                    Log.v("reverse","success : "+s);
+                    Intent intent = new Intent(MainActivity.this, PreviewGIF.class);
+                    intent.putExtra("fileName", finalPath);
+                    startActivity(intent);
+                }
+
+
+                @Override
+                public void onProgress(String s)
+                {
+                    Log.v("reverse","progress : "+s);
+                }
+
+
+
+            });
+        } catch (FFmpegCommandAlreadyRunningException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void deleteVideoFile(String absolutePath) {
+        File file = new File(absolutePath);
+        file.delete();
+    }
 
     private Bitmap addWaterMark(Bitmap src) {
         int w = src.getWidth();
@@ -155,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
         canvas.drawBitmap(src, 0, 0, null);
 
         Bitmap waterMark = BitmapFactory.decodeResource(getResources(), R.drawable.ic_lux);
-        canvas.drawBitmap(waterMark, w -150, -50, null);
+        canvas.drawBitmap(waterMark, w - 150, -50, null);
 
         return result;
     }
@@ -175,6 +330,8 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         bitmaps.clear();
         camera.start();
+        count.setVisibility(View.GONE);
+        cameraButton.setClickable(true);
     }
 
     @Override
@@ -247,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public String generateDefaultGIF() {
+    /*public String generateDefaultGIF() {
 
         String gifName = "";
         try {
@@ -274,22 +431,22 @@ public class MainActivity extends AppCompatActivity {
 
         return gifName;
     }
+*/
 
-
-    private class CustomCameraListener extends CameraListener {
+/*    private class CustomCameraListener extends CameraListener {
         @Override
         public void onPictureTaken(byte[] jpeg) {
             super.onPictureTaken(jpeg);
             com.otaliastudios.cameraview.CameraUtils.decodeBitmap(jpeg, new CameraUtils.BitmapCallback() {
                 @Override
                 public void onBitmapReady(Bitmap bitmap) {
-                    bitmaps.add(addWaterMark(getResizedBitmap(bitmap, 500)));
+                   // bitmaps.add(addWaterMark(getResizedBitmap(bitmap, 500)));
                 }
             });
         }
-    }
+    }*/
 
-    public Bitmap getResizedBitmap(Bitmap image, int maxSize) {
+    /*public Bitmap getResizedBitmap(Bitmap image, int maxSize) {
         int width = image.getWidth();
         int height = image.getHeight();
 
@@ -304,10 +461,10 @@ public class MainActivity extends AppCompatActivity {
 
         return Bitmap.createScaledBitmap(image, width, height, true);
     }
+*/
 
+/*    private class GifOperations extends AsyncTask {
 
-    private class GifOperations extends AsyncTask {
-/*
         public GifOperations(MainActivity activity) {
             dialog = new ProgressDialog(activity);
         }
@@ -316,11 +473,11 @@ public class MainActivity extends AppCompatActivity {
 */
 
 
-        @Override
+  /*      @Override
         protected void onPreExecute() {
             super.onPreExecute();
-     /*       dialog.show();
-            dialog.setMessage("Making your GIF, please wait...");*/
+     *//*       dialog.show();
+            dialog.setMessage("Making your GIF, please wait...");*//*
         }
 
         @Override
@@ -332,9 +489,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Object o) {
             super.onPostExecute(o);
-          /*  if (dialog != null && dialog.isShowing())
+          *//*  if (dialog != null && dialog.isShowing())
                 dialog.dismiss();
-*/
+*//*
             count.setText("");
             count.setVisibility(View.GONE);
             Intent intent = new Intent(MainActivity.this, PreviewGIF.class);
@@ -343,6 +500,6 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
-
+*/
 
 }

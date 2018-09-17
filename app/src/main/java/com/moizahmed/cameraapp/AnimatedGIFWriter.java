@@ -870,7 +870,7 @@ public class AnimatedGIFWriter {
 
     /**
      * Java port of
-     * C Implementation of Wu's Color Quantizer (v. 2)
+     * C compile of Wu's Color Quantizer (v. 2)
      * (see Graphics Gems vol. II, pp. 126-133)
      * Author:	Xiaolin Wu
      * Dept. of Computer Science
@@ -1356,7 +1356,7 @@ public class AnimatedGIFWriter {
      * Based on
      * QuadraticProbingHashTable.java
      * <p>
-     * Probing table implementation of hash tables.
+     * Probing table compile of hash tables.
      * Note that all "matching" is based on the equals method.
      *
      * @author Mark Allen Weiss
