@@ -106,6 +106,7 @@ public class PreviewGIF extends AppCompatActivity {
         File newfile = new File(folder, binding.email.getText().toString() + ".mp4");
         if (oldfile.renameTo(newfile)) {
             Toast.makeText(PreviewGIF.this, "File Saved Successfully", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(PreviewGIF.this,MainActivity.class));
             finish();
         }
     }
@@ -132,6 +133,7 @@ public class PreviewGIF extends AppCompatActivity {
     public void onBackPressed() {
         if (binding.layoutDetail.getVisibility() == View.VISIBLE) {
             videoView.setVisibility(View.VISIBLE);
+            showGIF();
             binding.layoutDetail.setVisibility(View.GONE);
             binding.reset.setVisibility(View.VISIBLE);
         } else {

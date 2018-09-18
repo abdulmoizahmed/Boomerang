@@ -137,16 +137,35 @@ public class MainActivity extends AppCompatActivity {
     public void onClick(View View) {
         if (View == findViewById(R.id.startCamera)) {
             cameraButton.setClickable(false);
+            startRecording();
             startCountDown();
         } else {
             camera.toggleFacing();
         }
     }
 
+    private void startRecording() {
+        new CountDownTimer(2000, 1000) {
+
+            @Override
+            public void onTick(long l) {
+
+            }
+
+            @Override
+            public void onFinish() {
+                startVideo();
+                captureCountDown();
+            }
+        }.start();
+    }
+
     private void startVideo() {
         camera.addCameraListener(new CameraListener() {
             @Override
             public void onVideoTaken(File video) {
+                count.setText("Creating GIF. Please Wait...");
+                count.setVisibility(View.VISIBLE);
                 reversedPath = "/sdcard/LUX/"+System.currentTimeMillis()+".mp4";
                 String command[] = {"-i", video.getAbsolutePath(),"-preset", "ultrafast", "-vf", "reverse", "-af", "areverse", reversedPath};
                 execFFmpegBinary(command);
@@ -162,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
         camera.setVideoMaxDuration(3000);
         camera.startCapturingVideo(output);
 
-
     }
 
     private void startCountDown() {
@@ -170,22 +188,18 @@ public class MainActivity extends AppCompatActivity {
         new CountDownTimer(3000, 1000) {
             @Override
             public void onTick(long l) {
-                count.setText("" + l / 1000);
+                count.setText("" + ((l / 1000)+1));
             }
 
             @Override
             public void onFinish() {
-
                 count.setVisibility(View.GONE);
-                startVideo();
-                captureCountDown();
-
             }
         }.start();
     }
 
     private void captureCountDown() {
-        count.setText("Creating GIF. Please Wait...");
+
         new CountDownTimer(3000, 1000) {
 
             @Override
@@ -195,7 +209,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFinish() {
-                count.setVisibility(View.VISIBLE);
                 camera.stopCapturingVideo();
                 }
         }.start();
