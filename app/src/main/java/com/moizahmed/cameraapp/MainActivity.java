@@ -280,6 +280,7 @@ public class MainActivity extends AppCompatActivity {
                     Intent intent = new Intent(MainActivity.this, PreviewGIF.class);
                     intent.putExtra("fileName", finalPath);
                     startActivity(intent);
+                    finish();
                 }
 
 
@@ -328,10 +329,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        bitmaps.clear();
         camera.start();
         count.setVisibility(View.GONE);
-        cameraButton.setClickable(true);
     }
 
     @Override

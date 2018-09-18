@@ -1,6 +1,7 @@
 package com.moizahmed.cameraapp;
 
 
+import android.content.Intent;
 import android.databinding.DataBindingUtil;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -122,14 +123,20 @@ public class PreviewGIF extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        showGIF();
+    }
+
+    @Override
     public void onBackPressed() {
         if (binding.layoutDetail.getVisibility() == View.VISIBLE) {
-           videoView.setVisibility(View.VISIBLE);
+            videoView.setVisibility(View.VISIBLE);
             binding.layoutDetail.setVisibility(View.GONE);
             binding.reset.setVisibility(View.VISIBLE);
         } else {
             deleteGIFFile();
-            super.onBackPressed();
+            startActivity(new Intent(PreviewGIF.this, MainActivity.class));
         }
     }
 
@@ -154,10 +161,10 @@ public class PreviewGIF extends AppCompatActivity {
             csvAppender.appendLine(binding.name.getText().toString(), binding.email.getText().toString());
             csvAppender.endLine();*/
 
-            Writer writer = new FileWriter(file,true);
+            Writer writer = new FileWriter(file, true);
             Collection<String[]> data = new ArrayList<>();
             data.add(new String[]{binding.name.getText().toString(), binding.email.getText().toString()});
-            csvWriter.write(writer,data );
+            csvWriter.write(writer, data);
             //writer.append(binding.name.getText().toString()+":"+binding.email.getText().toString()+"\n");
             writer.flush();
             writer.close();
