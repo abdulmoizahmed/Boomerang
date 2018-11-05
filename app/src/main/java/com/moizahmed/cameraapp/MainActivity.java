@@ -33,8 +33,10 @@ import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
 import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
-import com.otaliastudios.cameraview.*;
-import com.otaliastudios.cameraview.CameraUtils;
+import com.wonderkiln.camerakit.CameraKitEventCallback;
+import com.wonderkiln.camerakit.CameraKitVideo;
+import com.wonderkiln.camerakit.CameraView;
+
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -69,17 +71,14 @@ public class MainActivity extends AppCompatActivity {
     Button cameraButton;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
 
         camera = (CameraView) findViewById(R.id.camera);
-        cameraButton  = (Button) findViewById(R.id.startCamera);
-        camera.setPlaySounds(false);
-        camera.setSessionType(SessionType.VIDEO);
-        camera.setAudio(Audio.OFF);
+        cameraButton = (Button) findViewById(R.id.startCamera);
+
 
         count = (TextView) findViewById(R.id.countdown);
         capture = (Button) findViewById(R.id.startCamera);
@@ -94,20 +93,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createWaterMarkImage() {
-        try{
-            logo=new File("/sdcard/LUX/lux.png");
+        try {
+            logo = new File("/sdcard/LUX/lux.png");
             InputStream inputStream = getResources().openRawResource(R.drawable.lux); // id drawable
-            OutputStream out=new FileOutputStream(logo);
-            byte buf[]=new byte[1024];
+            OutputStream out = new FileOutputStream(logo);
+            byte buf[] = new byte[1024];
             int len;
-            while((len=inputStream.read(buf))>0)
-                out.write(buf,0,len);
+            while ((len = inputStream.read(buf)) > 0)
+                out.write(buf, 0, len);
             out.close();
             inputStream.close();
+        } catch (IOException e) {
         }
-        catch (IOException e){}
 
-}
+    }
 
     private void requestCamera() {
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
@@ -161,25 +160,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startVideo() {
-        camera.addCameraListener(new CameraListener() {
+
+
+
+        camera.captureVideo(new CameraKitEventCallback<CameraKitVideo>() {
             @Override
-            public void onVideoTaken(File video) {
+            public void callback(CameraKitVideo cameraKitVideo) {
+                output = cameraKitVideo.getVideoFile();
                 count.setText("Creating GIF. Please Wait...");
                 count.setVisibility(View.VISIBLE);
-                reversedPath = "/sdcard/LUX/"+System.currentTimeMillis()+".mp4";
-                String command[] = {"-i", video.getAbsolutePath(),"-preset", "ultrafast", "-vf", "reverse", "-af", "areverse", reversedPath};
+                reversedPath = "/sdcard/LUX/" + System.currentTimeMillis() + ".mp4";
+                String command[] = {"-i", cameraKitVideo.getVideoFile().getAbsolutePath(), "-preset", "ultrafast", "-vf", "reverse", "-af", "areverse", reversedPath};
                 execFFmpegBinary(command);
             }
         });
-
-        File folder = new File("/sdcard/LUX/");
-        folder.mkdir();
-        String input = "" + System.currentTimeMillis() + ".mp4";
-        output = new File(folder, input);
-
-        camera.setVideoQuality(VideoQuality.MAX_480P);
-        camera.setVideoMaxDuration(3000);
-        camera.startCapturingVideo(output);
 
     }
 
@@ -188,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
         new CountDownTimer(3000, 1000) {
             @Override
             public void onTick(long l) {
-                count.setText("" + ((l / 1000)+1));
+                count.setText("" + ((l / 1000) + 1));
             }
 
             @Override
@@ -209,8 +203,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFinish() {
-                camera.stopCapturingVideo();
-                }
+                camera.stopVideo();
+            }
         }.start();
     }
 
@@ -221,14 +215,12 @@ public class MainActivity extends AppCompatActivity {
             }
             ffmpeg.loadBinary(new LoadBinaryResponseHandler() {
                 @Override
-                public void onFailure()
-                {
+                public void onFailure() {
                     Toast.makeText(MainActivity.this, "failed loaded", Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
-                public void onSuccess()
-                {
+                public void onSuccess() {
                     Toast.makeText(MainActivity.this, "successfully loaded", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -237,59 +229,54 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void execFFmpegBinary(final String[] command)
-    {
+    private void execFFmpegBinary(final String[] command) {
         try {
             ffmpeg.execute(command, new ExecuteBinaryResponseHandler() {
                 @Override
                 public void onFailure(String s) {
 
-                    Log.v("reverse","failed : "+s);
+                    Log.v("reverse", "failed : " + s);
                 }
 
                 @Override
-                public void onSuccess(String s)
-                {
-                    Log.v("reverse","success : "+s);
-                    finalPath =  "/sdcard/LUX/"+System.currentTimeMillis()+".mp4";
-                    String command[] = {"-i",output.getAbsolutePath(),"-i",reversedPath,"-i",output.getAbsolutePath(),"-i",reversedPath,"-i",logo.getAbsolutePath(),"-preset", "ultrafast","-filter_complex","[0:0] [1:0] [2:0] [3:0] concat=n=4:v=1:a=0,overlay=main_w-overlay_w-5:5",finalPath};
+                public void onSuccess(String s) {
+                    Log.v("reverse", "success : " + s);
+                    finalPath = "/sdcard/LUX/" + System.currentTimeMillis() + ".mp4";
+                    String command[] = {"-i", output.getAbsolutePath(), "-i", reversedPath, "-i", output.getAbsolutePath(), "-i", reversedPath, "-i", logo.getAbsolutePath(), "-an","-preset", "ultrafast", "-filter_complex", "[0:0] [1:0] [2:0] [3:0] concat=n=4:v=1:a=0,overlay=main_w-overlay_w-5:5", finalPath};
                     concatVideos(command);
                 }
 
 
                 @Override
-                public void onProgress(String s)
-                {
-                    Log.v("reverse","progress : "+s);
+                public void onProgress(String s) {
+                    Log.v("reverse", "progress : " + s);
                 }
 
-               });
+            });
         } catch (FFmpegCommandAlreadyRunningException e) {
-            Log.v("reverse","exception : "+e);
+            Log.v("reverse", "exception : " + e);
 
         }
     }
 
-    public String getURLForResource (int resourceId) {
-        File file = new File(Uri.parse("android.resource://"+R.class.getPackage().getName()+"/" +resourceId).toString());
+    public String getURLForResource(int resourceId) {
+        File file = new File(Uri.parse("android.resource://" + R.class.getPackage().getName() + "/" + resourceId).toString());
         return file.getAbsolutePath();
     }
 
     private void concatVideos(String[] command) {
         try {
-            ffmpeg.execute(command,new ExecuteBinaryResponseHandler()
-            {
+            ffmpeg.execute(command, new ExecuteBinaryResponseHandler() {
                 @Override
                 public void onFailure(String s) {
-                    Log.v("reverse","failed : "+s);
+                    Log.v("reverse", "failed : " + s);
                 }
 
                 @Override
-                public void onSuccess(String s)
-                {
+                public void onSuccess(String s) {
                     deleteVideoFile(reversedPath);
                     deleteVideoFile(output.getAbsolutePath());
-                    Log.v("reverse","success : "+s);
+                    Log.v("reverse", "success : " + s);
                     Intent intent = new Intent(MainActivity.this, PreviewGIF.class);
                     intent.putExtra("fileName", finalPath);
                     startActivity(intent);
@@ -298,11 +285,9 @@ public class MainActivity extends AppCompatActivity {
 
 
                 @Override
-                public void onProgress(String s)
-                {
-                    Log.v("reverse","progress : "+s);
+                public void onProgress(String s) {
+                    Log.v("reverse", "progress : " + s);
                 }
-
 
 
             });
@@ -343,6 +328,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         camera.start();
+        camera.getPreviewSize();
         count.setVisibility(View.GONE);
     }
 
