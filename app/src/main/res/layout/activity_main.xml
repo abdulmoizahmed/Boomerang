@@ -8,6 +8,9 @@
     android:background="@drawable/background"
     tools:context="com.moizahmed.cameraapp.MainActivity" >
 
+    <!--
+        android:layout_width="1152px"
+        android:layout_height="1528px"-->
     <com.wonderkiln.camerakit.CameraView
         android:id="@+id/camera"
         android:layout_width="1152px"
