@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
         dialog = new ProgressDialog(this);
         dialog.setCancelable(false);
         dialog.setTitle("Please wait");
-        dialog.setMessage("Creating GIF from images");
+        dialog.setMessage("Creating Boomerang");
         //camera.addCameraListener(new CustomCameraListener());
         requestCamera();
         createWaterMarkImage();
@@ -167,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void callback(CameraKitVideo cameraKitVideo) {
                 output = cameraKitVideo.getVideoFile();
-                count.setText("Creating GIF. Please Wait...");
+                count.setText("Creating Boomerang. Please Wait...");
                 count.setVisibility(View.VISIBLE);
                 reversedPath = "/sdcard/LUX/" + System.currentTimeMillis() + ".mp4";
                 String command[] = {"-i", cameraKitVideo.getVideoFile().getAbsolutePath(), "-preset", "ultrafast", "-vf", "reverse", "-af", "areverse", reversedPath};

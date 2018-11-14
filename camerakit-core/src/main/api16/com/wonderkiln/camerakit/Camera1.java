@@ -286,7 +286,7 @@ public class Camera1 extends CameraImpl {
             if (zoomFactor <= 1) {
                 mZoom = 1;
             } else {
-                mZoom = zoomFactor;
+                mZoom= zoomFactor;
             }
 
             if (mCameraParameters != null && mCameraParameters.isZoomSupported()) {
@@ -586,18 +586,11 @@ public class Camera1 extends CameraImpl {
 
     @Override
     Size getPreviewResolution() {
-        List<Size> sizes = new ArrayList<>();
-
-
-        if (mCameraParameters != null) {
+        if (mPreviewSize == null && mCameraParameters != null) {
+            TreeSet<Size> sizes = new TreeSet<>();
             for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
                 sizes.add(new Size(size.width, size.height));
             }
-        }
-
-
-        if (mPreviewSize == null && mCameraParameters != null) {
-
 
             TreeSet<AspectRatio> aspectRatios = findCommonAspectRatios(
                     mCameraParameters.getSupportedPreviewSizes(),
@@ -625,7 +618,7 @@ public class Camera1 extends CameraImpl {
                 targetRatio = aspectRatios.size() > 0 ? aspectRatios.last() : null;
             }
 
-           /* Iterator<Size> descendingSizes = sizes.get(0).;
+            Iterator<Size> descendingSizes = sizes.descendingIterator();
             Size size;
             while (descendingSizes.hasNext() && mPreviewSize == null) {
                 size = descendingSizes.next();
@@ -633,7 +626,7 @@ public class Camera1 extends CameraImpl {
                     mPreviewSize = size;
                     break;
                 }
-            }*/
+            }
         }
 
         boolean invertPreviewSizes = (mCameraInfo.orientation + mDeviceOrientation) % 180 == 90;
@@ -641,7 +634,7 @@ public class Camera1 extends CameraImpl {
             return new Size(mPreviewSize.getHeight(), mPreviewSize.getWidth());
         }
 
-        return sizes.isEmpty()?mPreviewSize:sizes.get(2);
+        return mPreviewSize;
     }
 
     @Override
@@ -794,18 +787,17 @@ public class Camera1 extends CameraImpl {
     private void adjustCameraParameters(int currentTry) {
         boolean haveToReadjust = false;
         Camera.Parameters resolutionLess = mCamera.getParameters();
-        List<Camera.Size> sizes = mCamera.getParameters().getSupportedPreviewSizes();
 
         if (getPreviewResolution() != null) {
             mPreview.setPreviewParameters(
                     1080,
-                    1440,
+                    1920,
                     mCameraParameters.getPreviewFormat()
             );
 
             mCameraParameters.setPreviewSize(
                     1080,
-                    1440
+                    1920
             );
 
             try {
